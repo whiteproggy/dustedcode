@@ -7,28 +7,45 @@
 #include <iostream>
 #include <ios>
 
+template <typename T>
 class File;
 
 template <typename T>
 struct Rider {
-	File* file;
+	File<T>* file = nullptr;
 	T first = 0;
 	int pos = 0;
 	bool eof = false;
 	bool eor = false;
 
 	Rider() = default;
+	void open_file(const std::string& filename);
+	void create_file(const std::string& filename);
+	void write(const T& value);
+	void read(T& value);
+	void set_file(File<T>* file, std::size_t _pos);
+	void clear_file();
 };
 
+////////////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
 class File
 {
 	std::fstream _file;
 	bool _is_open = false;
 	bool _is_read = true;
 	std::size_t _size = 0;
+	std::size_t _data_size = sizeof(T);
 
 public:
 	File() = default;
+	File(const std::string& _filename, bool _write) {
+		if (_write)
+			create(_filename);
+		else
+			open(_filename);
+	}
 	File(const File& other) = delete;
 	File& operator = (const File& other) = delete;
 	File(File&& other): _file(std::move(other._file)), _is_open(other._is_open), _is_read(other._is_read), _size(other._size) {}
@@ -50,6 +67,7 @@ public:
 			_is_read = true;
 			_file.seekg(0, _file.end);
 			_size = _file.tellg();
+			_size /= _data_size;
 			_file.seekg(0, _file.beg);
 			return true;
 		}
@@ -69,24 +87,32 @@ public:
 	std::size_t size() const { return _size; }
 	bool eof() const { return _file.eof(); }
 
-	template <typename T>
-	bool read(T& value) {
+	bool read(std::size_t pos, T& value) {
 		if (!_is_read)
 			return false;
-		_file.read(reinterpret_cast<char*>(&value), sizeof (T));
+		if (pos < _size)
+			_file.seekg(pos * _data_size, _file.beg);
+		_file.read(reinterpret_cast<char*>(&value), _data_size);
 		return _file ? true : false;
 	}
 
-	template <typename T>
-	bool write(const T& value) {
+	bool write(std::size_t pos, const T& value) {
 		if (_is_read)
 			return false;
-		_file.write(reinterpret_cast<const char*>(&value), sizeof (T));
+		if (pos < _size)
+			_file.seekp(pos * _data_size,  _file.beg);
+		_file.write(reinterpret_cast<const char*>(&value), _data_size);
 		if (_file) {
-			++_size;
+			_size++;
 			return true;
 		}
 		return false;
+	}
+
+	void set(Rider<T>& rider, std::size_t pos) {
+		rider.file = this;
+		rider.eof = false;
+		rider.pos = pos >= 0 ? (pos < _size ? pos : _size) : 0;
 	}
 
 	void close() {
@@ -94,41 +120,63 @@ public:
 	}
 };
 
+////////////////////////////////////////////////////////////////////////////////////
+
 template <typename T>
-void write_int(Rider<T>& rider, int value) {
-	if (rider.file->write(value))
-		rider.pos++;
+inline void Rider<T>::open_file(const std::string& filename) {
+	clear_file();
+	File<T>* _file = new File<T>(filename, false);
+	if (_file)
+		set_file(_file, 0);
+}
+
+template <typename T>
+inline void Rider<T>::create_file(const std::string& filename) {
+	clear_file();
+	File<T>* _file = new File<T>(filename, true);
+	_file->set(*this, 0);
+}
+
+template <typename T>
+inline void Rider<T>::clear_file() {
+	delete file;
+	file = nullptr;
+}
+
+template <typename T>
+inline void Rider<T>::write(const T& value) {
+	if (file->write(pos, value))
+		pos++;
 	else
-		rider.eof = true;
+		eof = true;
 }
 
 template <typename T>
-void read_int(Rider<T>& rider, int& value) {
-	if (rider.file->read(value))
-		rider.pos++;
+inline void Rider<T>::read(T& value) {
+	if (file->read(pos, value))
+		pos++;
 	else
-		rider.eof = true;
+		eof = true;
 }
 
 template <typename T>
-void file_set(Rider<T>& rider, File* file, std::size_t pos) {
-	rider.file = file;
-	rider.eof = false;
-	rider.pos = pos >= 0 ? (pos < file->size() ? pos : file->size()) : 0;
+inline void Rider<T>::set_file(File<T>* _file, std::size_t _pos) {
+	// file_set
+	file = _file;
+	eof = false;
+	pos = _pos >= 0 ? (_pos < file->size() ? _pos : file->size()) : 0;
+	//
+	read(first);
+	eor = eof;
 }
 
-template <typename T>
-void run_set(Rider<T>& rider, File* file) {
-	file_set(rider, file, 0);
-	read_int(rider, rider.first);
-	rider.eor = rider.eof;
-}
+////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
 void copy_value(Rider<T>& src, Rider<T>& dst) {
 	dst.first = src.first;
-	write_int(dst, dst.first);
-	read_int(src, src.first);
+	dst.write(dst.first);
+	src.read(src.first);
 	src.eor = src.eof || (src.first < dst.first);
 }
 
@@ -139,6 +187,8 @@ void copy_run(Rider<T>& src, Rider<T>& dst) {
 	} while (!src.eor);
 }
 
+///////////////////////////////////////////////////////////////////////////////////
+
 template <typename T, typename Out>
 bool binary_file_to_string(const std::string& filename, Out& out) {
 	std::fstream file(filename, std::ios_base::in | std::ios_base::binary);
@@ -148,6 +198,27 @@ bool binary_file_to_string(const std::string& filename, Out& out) {
 		T data;
 		file.read(reinterpret_cast<char*>(&data), sizeof(T));
 		out << data << std::endl;
+	}
+	file.close();
+	return true;
+}
+
+template <typename T>
+bool is_sorted(const std::string& filename) {
+	std::fstream file(filename, std::ios_base::in | std::ios_base::binary);
+	if (!file.is_open())
+		return false;
+	T first;
+	if (!file.eof())
+		file.read(reinterpret_cast<char*>(&first), sizeof(T));
+	while (!file.eof()) {
+		T second;
+		file.read(reinterpret_cast<char*>(&second), sizeof(T));
+		if (first > second) {
+			file.close();
+			return false;
+		}
+		first = second;
 	}
 	file.close();
 	return true;
