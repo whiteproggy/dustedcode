@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(dustedcxx LANGUAGES CXX)
+project(dustedcode LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -27,4 +27,4 @@ set(test_files
     main.cpp
 )
 
-add_executable(dustedcxx ${test_files} ${include_files})
+add_executable(dustedcode ${test_files} ${include_files})
