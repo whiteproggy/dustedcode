@@ -15,6 +15,8 @@ include_directories(
 set(include_files
     "${PROJECT_CXX_INCLUDE_DIR}/comment.h"
     "${PROJECT_CXX_INCLUDE_DIR}/sort.h"
+    "${PROJECT_CXX_INCLUDE_DIR}/string.h"
+    "${PROJECT_CXX_INCLUDE_DIR}/text.h"
     "${PROJECT_CXX_INCLUDE_DIR}/files.h"
     "${PROJECT_CXX_INCLUDE_DIR}/outsort.h"
     )

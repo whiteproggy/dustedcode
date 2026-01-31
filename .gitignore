@@ -1,6 +1,7 @@
 # This file is used to ignore files which are generated
 # ----------------------------------------------------------------------------
 
+.gitignore
 *~
 *.autosave
 *.a
@@ -36,7 +37,7 @@ Thumbs.db
 /.qmake.stash
 
 # qtcreator generated files
-*.pro.user*
+*.user*
 
 # xemacs temporary files
 *.flc

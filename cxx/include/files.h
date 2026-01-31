@@ -15,16 +15,19 @@ struct Rider {
 	File<T>* file = nullptr;
 	T first = 0;
 	int pos = 0;
-	bool eof = false;
-	bool eor = false;
+	bool eof = true;
+	bool eor = true;
 
 	Rider() = default;
 	void open_file(const std::string& filename);
+	void reopen_file();
 	void create_file(const std::string& filename);
 	void write(const T& value);
 	void read(T& value);
 	void set_file(File<T>* file, std::size_t _pos);
 	void clear_file();
+	void close_file();
+	std::string filename();
 };
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -32,6 +35,7 @@ struct Rider {
 template <typename T>
 class File
 {
+	std::string _filename = {};
 	std::fstream _file;
 	bool _is_open = false;
 	bool _is_read = true;
@@ -40,11 +44,11 @@ class File
 
 public:
 	File() = default;
-	File(const std::string& _filename, bool _write) {
-		if (_write)
-			create(_filename);
+	File(const std::string& filename, bool for_write) {
+		if (for_write)
+			create(filename);
 		else
-			open(_filename);
+			open(filename);
 	}
 	File(const File& other) = delete;
 	File& operator = (const File& other) = delete;
@@ -61,7 +65,8 @@ public:
 	~File() { _file.close(); }
 
 	bool open(const std::string& filename) { // input
-		_file.open(filename, std::ios_base::in | std::ios_base::binary);
+		_filename = filename;
+		_file.open(_filename, std::ios_base::in | std::ios_base::binary);
 		if (_file.is_open()) {
 			_is_open = true;
 			_is_read = true;
@@ -75,7 +80,8 @@ public:
 	}
 
 	bool create(const std::string& filename) { // output
-		_file.open(filename, std::ios_base::out | std::ios_base::binary);
+		_filename = filename;
+		_file.open(_filename, std::ios_base::out | std::ios_base::binary);
 		if (_file.is_open()) {
 			_is_open = true;
 			_is_read = false;
@@ -86,6 +92,7 @@ public:
 	}
 	std::size_t size() const { return _size; }
 	bool eof() const { return _file.eof(); }
+	std::string filename() const { return _filename; }
 
 	bool read(std::size_t pos, T& value) {
 		if (!_is_read)
@@ -109,7 +116,7 @@ public:
 		return false;
 	}
 
-	void set(Rider<T>& rider, std::size_t pos) {
+	void add_to_rider(Rider<T>& rider, std::size_t pos) {
 		rider.file = this;
 		rider.eof = false;
 		rider.pos = pos >= 0 ? (pos < _size ? pos : _size) : 0;
@@ -131,6 +138,15 @@ inline void Rider<T>::open_file(const std::string& filename) {
 }
 
 template <typename T>
+inline void Rider<T>::reopen_file() {
+	if (!file)
+		return;
+	std::string fn = file->filename();
+	clear_file();
+	open_file(fn);
+}
+
+template <typename T>
 inline void Rider<T>::create_file(const std::string& filename) {
 	clear_file();
 	File<T>* _file = new File<T>(filename, true);
@@ -141,6 +157,11 @@ template <typename T>
 inline void Rider<T>::clear_file() {
 	delete file;
 	file = nullptr;
+}
+
+template <typename T>
+inline void Rider<T>::close_file() {
+	if (file) file->close();
 }
 
 template <typename T>
@@ -168,6 +189,11 @@ inline void Rider<T>::set_file(File<T>* _file, std::size_t _pos) {
 	//
 	read(first);
 	eor = eof;
+}
+
+template <typename T>
+inline std::string Rider<T>::filename() {
+	return file == nullptr ? "" : file->filename();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////

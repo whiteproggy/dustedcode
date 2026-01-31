@@ -1,7 +1,11 @@
 #ifndef SORT_H
 #define SORT_H
 
-inline void iswap(int& a, int& b) { a ^= b; b ^= a; a ^= b; }
+template <typename T>
+void swap(T& a, T& b) { T c{a}; a = b; b = c; }
+
+template <>
+void swap(int& a, int& b) { a ^= b; b ^= a; a ^= b; }
 
 /*******************************************************************/
 
@@ -34,7 +38,7 @@ void straight_merge(T* A, int n) {
 			while (q > 0)
 				A[k] = A[i++], k += h, q--;
 			h = -h;
-			iswap(k, L);
+			swap(k, L);
 		} while (m != 0);
 		up = !up;
 		p *= 2;
@@ -43,6 +47,23 @@ void straight_merge(T* A, int n) {
 		for (int i = 0; i < n; ++i)
 			A[i] = A[i+n];
 	}
+}
+
+template<typename T>
+void shell_sort(T* A, int left, int right) {
+    int h;
+    for (h = left; h <= (right - left) / 9; h = 3 * h + 1)
+        ;
+    for (; h > 0; h /= 3)
+        for (int i = left + h; i <= right; ++i) {
+            int j = i;
+            T v = A[i];
+            while (j >= left + h && v < A[j - h]) {
+                A[j] = A[j-h];
+                j -= h;
+            }
+            A[j] = v;
+        }
 }
 
 #endif // SORT_H
